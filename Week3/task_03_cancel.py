@@ -9,7 +9,7 @@ async def background_loop():
             await asyncio.sleep(1)
             print(f"{ctime()} Worker: Still ticking...")
     except asyncio.CancelledError:
-        # 
+        # Injected when task.cancel() is executed at await checkpoint
         print(f"{ctime()} Worker: Interrupted! Executing clean-up logic before exit...")
 
 async def main():

@@ -1,11 +1,12 @@
 # mock_stock_api.py
+from turtle import delay
 from fastapi import FastAPI
 import asyncio
 
 app = FastAPI(title="Asyncio Week 3 Mock Stock API")
 
 @app.get("/price/{server_name}")
-async def get_stock_price(server_name: str):
+async def get_stock_price(server_name: delay):
     """ API จำลองราคาหุ้น โดยแต่ละสาขาจะมีความหน่วง (Latency) ไม่เท่ากัน """
     name_lower = server_name.lower()
     
