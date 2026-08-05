@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Smart Lab Lighting Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --panel-border: #262f45;
+    --text: #e7ecf7;
+    --muted: #8b95ab;
+    --on: #ffcf5c;
+    --on-glow: #ffcf5c66;
+    --off: #3a4256;
+    --accent: #5ec8ff;
+    --danger: #ff6b6b;
+    --ok: #57d38c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+    background: radial-gradient(circle at 20% 0%, #1b2440 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 20px 60px;
+  }
+  header { text-align: center; margin-bottom: 8px; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: 0.3px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .config {
+    max-width: 420px; margin: 20px auto; display: flex; gap: 8px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    padding: 10px 12px; border-radius: 10px;
+  }
+  .config input {
+    flex: 1; background: #0d1220; border: 1px solid var(--panel-border);
+    color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 14px;
+  }
+  .config button {
+    background: var(--accent); border: none; color: #06111f;
+    font-weight: 600; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .status-bar {
+    max-width: 420px; margin: 0 auto 24px; text-align: center; font-size: 13px;
+  }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.connected { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .dot.disconnected { background: var(--danger); }
+
+  .toolbar { text-align: center; margin-bottom: 28px; }
+  .reset-btn {
+    background: linear-gradient(135deg, #ff7a7a, #ff5b5b);
+    border: none; color: white; font-weight: 600; font-size: 14px;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  }
+  .reset-btn:hover { filter: brightness(1.08); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 22px 16px 18px;
+    text-align: center;
+    transition: border-color 0.2s ease;
+  }
+  .card.on { border-color: var(--on); }
+  .card h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; }
+
+  .bulb-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+  .bulb {
+    width: 76px; height: 76px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #1d2438; border: 1px solid var(--panel-border);
+    font-size: 34px;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+  .bulb.on {
+    background: radial-gradient(circle, #3a301a 0%, #1d2438 70%);
+    box-shadow: 0 0 24px 6px var(--on-glow);
+  }
+  .bulb.loading { opacity: 0.5; }
+  .spinner {
+    position: absolute; width: 76px; height: 76px; border-radius: 50%;
+    border: 3px solid transparent; border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-text { font-size: 13px; margin-bottom: 4px; }
+  .status-text.on { color: var(--on); font-weight: 600; }
+  .status-text.off { color: var(--muted); }
+  .delay-text { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+
+  .toggle-btn {
+    width: 100%; padding: 8px 0; border-radius: 8px; border: 1px solid var(--panel-border);
+    background: #0d1220; color: var(--text); font-size: 13px; cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .toggle-btn:hover:not(:disabled) { background: #171f34; }
+  .toggle-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .log-panel {
+    max-width: 1000px; margin: 34px auto 0;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .log-panel h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .log-lines { max-height: 160px; overflow-y: auto; font-size: 12px; font-family: "Consolas", monospace; }
+  .log-line { color: var(--muted); padding: 2px 0; border-bottom: 1px dashed #232b3f; }
+  .log-line span.tag { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💡 Smart Lab Lighting Dashboard</h1>
+  <div class="sub">เรียนรู้การควบคุมไฟผ่าน HTTP API + สถานะเรียลไทม์ผ่าน WebSocket</div>
+</header>
+
+<div class="config">
+  <input id="studentIdInput" type="text" value="6710301022" placeholder="Student ID">
+  <button onclick="connect()">เชื่อมต่อ</button>
+</div>
+
+<div class="status-bar">
+  <span id="connDot" class="dot disconnected"></span>
+  <span id="connText">ยังไม่ได้เชื่อมต่อ</span>
+</div>
+
+<div class="toolbar">
+  <button class="reset-btn" onclick="resetAll()">🔄 รีเซ็ตไฟทั้งหมดเป็น OFF</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="log-panel">
+  <h4>Event log</h4>
+  <div class="log-lines" id="logLines"></div>
+</div>
+
+<script>
+const BASE_URL = "http://172.16.2.117:8088";
+const WS_URL = "ws://172.16.2.117:8088";
+
+const LIGHT_ORDER = ["light_1", "light_2", "light_3", "light_4"];
+
+let studentId = document.getElementById("studentIdInput").value.trim();
+let ws = null;
+let lightsState = {};
+
+function log(msg, tag) {
+  const el = document.getElementById("logLines");
+  const line = document.createElement("div");
+  line.className = "log-line";
+  line.innerHTML = `<span class="tag">[${tag}]</span> ${msg}`;
+  el.prepend(line);
+}
+
+function setConnStatus(connected) {
+  document.getElementById("connDot").className = "dot " + (connected ? "connected" : "disconnected");
+  document.getElementById("connText").textContent = connected
+    ? `เชื่อมต่อแล้ว (student_id: ${studentId})`
+    : "ขาดการเชื่อมต่อ";
+}
+
+// ---- Render ----
+function renderLights(data) {
+  lightsState = data;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  LIGHT_ORDER.forEach(lightId => {
+    const info = data[lightId];
+    if (!info) return;
+    const isOn = info.status === "ON";
+    const card = document.createElement("div");
+    card.className = "card" + (isOn ? " on" : "");
+    card.innerHTML = `
+      <h3>${info.name}</h3>
+      <div class="bulb-wrap">
+        <div class="bulb ${isOn ? "on" : ""}" id="bulb-${lightId}">💡</div>
+      </div>
+      <div class="status-text ${isOn ? "on" : "off"}">สถานะ: ${isOn ? "เปิดอยู่ (ON)" : "ปิดอยู่ (OFF)"}</div>
+      <div class="delay-text">Hardware Delay: ${info.delay}s</div>
+      <button class="toggle-btn" id="btn-${lightId}" onclick="toggleLight('${lightId}', '${isOn ? "OFF" : "ON"}')">
+        ${isOn ? "ปิดไฟ" : "เปิดไฟ"}
+      </button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ---- HTTP calls ----
+async function fetchAllLights() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/${studentId}/lights`);
+    const data = await res.json();
+    renderLights(data);
+    log("โหลดสถานะไฟทั้งหมดสำเร็จ", "GET");
+  } catch (e) {
+    log("โหลดสถานะไม่สำเร็จ: " + e, "ERROR");
+  }
+}
+
+async function toggleLight(lightId, newStatus) {
+  const btn = document.getElementById(`btn-${lightId}`);
+  const bulb = document.getElementById(`bulb-${lightId}`);
+  btn.disabled = true;
+  bulb.classList.add("loading");
+  const spinner = document.createElement("div");
+  spinner.className = "spinner";
+  bulb.appendChild(spinner);
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`${BASE_URL}/api/${studentId}/lights/${lightId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    log(`${lightId} -> ${data.current_status ?? JSON.stringify(data)} (ใช้เวลา ${elapsed}s)`, "POST");
+    // ไม่ต้อง render เองก็ได้ เพราะ WebSocket จะ broadcast อัปเดตมาให้อัตโนมัติ
+    // แต่เผื่อ WS หลุด ก็ fetch ซ้ำกันเหนียวไว้
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await fetchAllLights();
+    }
+  } catch (e) {
+    log(`${lightId} error: ${e}`, "ERROR");
+  } finally {
+    btn.disabled = false;
+    bulb.classList.remove("loading");
+    spinner.remove();
+  }
+}
+
+async function resetAll() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/${studentId}/lights/reset`, { method: "DELETE" });
+    const data = await res.json();
+    log(data.message || "รีเซ็ตเรียบร้อย", "DELETE");
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await fetchAllLights();
+    }
+  } catch (e) {
+    log("รีเซ็ตไม่สำเร็จ: " + e, "ERROR");
+  }
+}
+
+// ---- WebSocket ----
+function connectWebSocket() {
+  if (ws) ws.close();
+  ws = new WebSocket(`${WS_URL}/ws/${studentId}`);
+
+  ws.onopen = () => {
+    setConnStatus(true);
+    log("WebSocket เชื่อมต่อสำเร็จ", "WS");
+  };
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    renderLights(data);
+    log("ได้รับอัปเดตสถานะแบบเรียลไทม์", "WS");
+  };
+  ws.onclose = () => {
+    setConnStatus(false);
+    log("WebSocket ถูกตัดการเชื่อมต่อ", "WS");
+  };
+  ws.onerror = () => {
+    log("WebSocket เกิดข้อผิดพลาด", "ERROR");
+  };
+}
+
+function connect() {
+  studentId = document.getElementById("studentIdInput").value.trim();
+  if (!studentId) return;
+  fetchAllLights();
+  connectWebSocket();
+}
+
+// เริ่มเชื่อมต่ออัตโนมัติตอนเปิดหน้า
+connect();
+</script>
+</body>
+</html>
