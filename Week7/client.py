@@ -2,12 +2,12 @@ import asyncio
 import httpx
 
 # เปลี่ยน IP ตรงนี้ให้เป็น IP เครื่องเพื่อนที่เป็น Server (เช่น "192.168.1.50")
-SERVER_IP = "localhost"
-PORT = "8088"
+SERVER_IP = "172.20.56.117"
+PORT = "8089"
 SERVER_URL = f"http://{SERVER_IP}:{PORT}"
 
 # ระบุรหัส/ชื่อนักเรียนของผู้ส่ง
-MY_STUDENT_ID = "6710301022"
+MY_STUDENT_ID = "6710301022"  # เปลี่ยนเป็นรหัสนักเรียนของคุณ
 
 async def hunt_coupons():
     async with httpx.AsyncClient() as client:
